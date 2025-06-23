@@ -1,0 +1,263 @@
+---
+title: "Bellabeat Wellness Data Analysis Case Study"
+author: "Zahra Shamlou"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    theme: cerulean
+    highlight: tango
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+
+## Introduction
+
+This case study analyzes user activity data from Bellabeat, a high-tech health product company for women.
+The goal is to understand user behavior patterns by exploring activity, sleep, and calorie data, and to identify actionable insights for product improvement.
+
+
+## Data Loading and Preparation
+We load and combine two datasets from different collections, then clean and summarize the data.
+
+
+```{r }
+# Load datasets
+dailyActivity_merged1 <- read_csv("C:/Users/zsham/OneDrive/google_data_analysis_bellabeat/data/First_Collection/dailyActivity_merged.csv")
+dailyActivity_merged2 <- read_csv("C:/Users/zsham/OneDrive/google_data_analysis_bellabeat/data/Second_Collection/dailyActivity_merged.csv")
+
+# Combine datasets
+dailyActivity_merged <- rbind(dailyActivity_merged1, dailyActivity_merged2)
+rm(dailyActivity_merged1, dailyActivity_merged2)
+
+# Check for duplicate rows by Id and ActivityDate
+duplicates <- dailyActivity_merged %>%
+  group_by(Id, ActivityDate) %>%
+  filter(n() > 1)
+
+# Aggregate numeric columns by Id and ActivityDate
+dailyActivity_merged <- dailyActivity_merged %>%
+  group_by(Id, ActivityDate) %>%
+  summarise(across(where(is.numeric), sum, na.rm = TRUE), .groups = "drop")
+
+# Format dates and create weekday column
+dailyActivity_merged <- dailyActivity_merged %>%
+  mutate(
+    ActivityDate = as.Date(ActivityDate, format = "%m/%d/%Y"),
+    Weekday = weekdays(ActivityDate)
+  )
+```
+
+
+
+## Data Quality Checks
+
+```{r }
+# Check for any duplicate rows overall
+any_duplicated <- any(duplicated(dailyActivity_merged))
+
+# Missing value summary
+missing_values <- colSums(is.na(dailyActivity_merged))
+
+```
+
+## Feature Engineering
+We create new features for active distance and active minutes by summing relevant columns.
+```{r }
+dailyActivity_merged <- dailyActivity_merged %>%
+  mutate(
+    total_active_dis = VeryActiveDistance + ModeratelyActiveDistance + LightActiveDistance,
+    total_active_min = VeryActiveMinutes + FairlyActiveMinutes + LightlyActiveMinutes
+  )
+
+```
+
+
+
+
+## Exploratory Data Analysis (EDA)
+
+
+
+### Distribution of Key Variables
+
+```{r }
+ggplot(dailyActivity_merged, aes(x = TotalSteps)) +
+  geom_histogram(binwidth = 1000, color = "white", fill = "skyblue") +
+  theme_minimal() +
+  labs(title = "Distribution of Total Steps")
+
+ggplot(dailyActivity_merged, aes(x = Calories)) +
+  geom_histogram(binwidth = 200, color = "white", fill = "skyblue") +
+  theme_minimal() +
+  labs(title = "Distribution of Calories Burned")
+
+ggplot(dailyActivity_merged, aes(x = total_active_dis)) +
+  geom_histogram(color = "white", fill = "orange") +
+  theme_minimal() +
+  labs(title = "Distribution of Total Active Distance")
+
+ggplot(dailyActivity_merged, aes(x = total_active_min)) +
+  geom_histogram(color = "white", fill = "orange") +
+  theme_minimal() +
+  labs(title = "Distribution of Total Active Minutes")
+
+```
+
+
+### Activity by User and Weekday
+
+```{r }
+dailyActivity_merged %>%
+  group_by(Id, Weekday) %>%
+  summarise(total_active_dis = sum(total_active_dis), .groups = "drop") %>%
+  ggplot(aes(x = factor(Id), y = total_active_dis, fill = Weekday)) +
+  geom_col(position = "stack", width = 0.7) +
+  labs(x = "User ID", y = "Total Active Distance (km)", title = "Stacked Total Active Distance by User and Weekday") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank())
+
+```
+
+
+### Time Series of Activity
+
+Mean Active Distance with Standard Error Bars
+
+```{r }
+summary_df <- dailyActivity_merged %>%
+  group_by(ActivityDate) %>%
+  summarise(
+    mean_active_dis = mean(total_active_dis),
+    se_active_dis = sd(total_active_dis) / sqrt(n()),
+    .groups = "drop"
+  )
+
+ggplot(summary_df, aes(x = ActivityDate, y = mean_active_dis)) +
+  geom_point(color = "steelblue", alpha = 0.7) +
+  geom_errorbar(aes(ymin = mean_active_dis - se_active_dis, ymax = mean_active_dis + se_active_dis), width = 0.2, color = "gray30", alpha = 0.8) +
+  labs(title = "Time Series of Mean Active Distance with Standard Error Bars", x = "Date", y = "Mean Active Distance (km)") +
+  theme_minimal()
+
+```
+
+
+## Behavioral Trends by Weekday
+Average Steps, Distance, and Calories with 95% Confidence Intervals
+
+```{r }
+plot_weekday_trend <- function(data, var, y_label, title, line_color) {
+  data %>%
+    mutate(Weekday = factor(Weekday, levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))) %>%
+    group_by(Weekday) %>%
+    summarise(
+      avg = mean({{var}}, na.rm = TRUE),
+      se = sd({{var}}, na.rm = TRUE) / sqrt(n()),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      ci_low = avg - 1.96 * se,
+      ci_high = avg + 1.96 * se
+    ) %>%
+    ggplot(aes(x = Weekday, y = avg)) +
+    geom_line(group = 1, color = line_color) +
+    geom_point(color = line_color) +
+    geom_errorbar(aes(ymin = ci_low, ymax = ci_high), width = 0.2, color = "darkgray") +
+    labs(title = title, x = "Weekday", y = y_label) +
+    theme_minimal()
+}
+
+plot_weekday_trend(dailyActivity_merged, TotalSteps, "Average Steps", "Average Steps by Weekday with 95% CI", "steelblue")
+plot_weekday_trend(dailyActivity_merged, TotalDistance, "Average Distance (km)", "Average Distance by Weekday with 95% CI", "darkgreen")
+plot_weekday_trend(dailyActivity_merged, Calories, "Average Calories", "Average Calories by Weekday with 95% CI", "darkred")
+
+```
+
+## Activity Level Breakdown
+```{r }
+activity_levels <- dailyActivity_merged %>%
+  summarise(
+    Sedentary = mean(SedentaryMinutes),
+    LightlyActive = mean(LightlyActiveMinutes),
+    FairlyActive = mean(FairlyActiveMinutes),
+    VeryActive = mean(VeryActiveMinutes)
+  ) %>%
+  pivot_longer(everything(), names_to = "ActivityLevel", values_to = "Minutes")
+
+ggplot(activity_levels, aes(x = ActivityLevel, y = Minutes, fill = ActivityLevel)) +
+  geom_col() +
+  labs(title = "Average Minutes by Activity Level", y = "Minutes") +
+  theme_minimal()
+
+```
+
+
+## Steps by Day of the Week (Boxplot)
+
+```{r }
+dailyActivity_merged %>%
+  mutate(Weekday = factor(Weekday, levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))) %>%
+  ggplot(aes(x = Weekday, y = TotalSteps)) +
+  geom_boxplot(fill = "skyblue") +
+  labs(title = "Steps by Weekday", x = "Weekday", y = "Total Steps") +
+  theme_minimal()
+
+```
+## Cumulative Steps per User Over Time
+
+```{r }
+cumulative_steps <- dailyActivity_merged %>%
+  group_by(Id, ActivityDate) %>%
+  summarise(Steps = sum(TotalSteps), .groups = "drop") %>%
+  arrange(Id, ActivityDate) %>%
+  group_by(Id) %>%
+  mutate(CumulativeSteps = cumsum(Steps))
+
+ggplot(cumulative_steps, aes(x = ActivityDate, y = CumulativeSteps, color = factor(Id))) +
+  geom_line() +
+  labs(title = "Cumulative Steps Over Time by User", x = "Date", y = "Cumulative Steps") +
+  theme_minimal()
+
+```
+
+## Calories Burned vs Steps (Bubble Plot)
+
+```{r }
+ggplot(dailyActivity_merged, aes(x = TotalSteps, y = Calories, size = VeryActiveMinutes)) +
+  geom_point(alpha = 0.6, color = "tomato") +
+  labs(title = "Calories vs Steps (Size = Very Active Minutes)", x = "Total Steps", y = "Calories Burned") +
+  theme_minimal()
+
+```
+
+
+
+## Relationship Between Steps and Calories Burned
+
+```{r } 
+# ```{r, echo=FALSE}
+ggplot(dailyActivity_merged, aes(x = TotalSteps, y = Calories)) +
+  geom_point(alpha = 0.5, color = "tomato") +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Steps vs Calories Burned", x = "Steps", y = "Calories") +
+  theme_minimal()
+
+```
+
+
+## Conclusion
+This analysis highlights how Bellabeat users’ activity and health metrics vary by day, user, and activity intensity.
+The visualizations and statistics provide actionable insights to improve user engagement and wellness product design.
+
+
+
+
