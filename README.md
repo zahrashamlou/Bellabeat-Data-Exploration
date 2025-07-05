@@ -9,7 +9,7 @@ You can **view the interactive dashboard here**:
 https://public.tableau.com/app/profile/zahra.shamlou/viz/BellaBeat_17514072335020/Dashboard1
 
 
-R Mark Down Report here**:
+You can **view R Mark Down Report here**:
 [View Dashboard](https://zahrashamlou.github.io/Bellabeat-Data-Exploration/)
 
 
