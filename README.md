@@ -11,7 +11,7 @@ You can **view the interactive dashboard here**:
 ---
 
 You can **view RMD Report here**:
-[View RMD](https://zahrashamlou.github.io/Bellabeat-Data-Exploration/)
+[View RMD Report](https://zahrashamlou.github.io/Bellabeat-Data-Exploration/)
 
 ---
 
