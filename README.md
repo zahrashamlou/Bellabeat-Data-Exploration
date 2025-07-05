@@ -6,7 +6,7 @@ Welcome to the BellaBeat Data Analysis!
 ---
 
 You can **view the interactive dashboard here**:  
-[View Dashboard]https://public.tableau.com/app/profile/zahra.shamlou/viz/BellaBeat_17514072335020/Dashboard1
+[View Dashboard](https://public.tableau.com/app/profile/zahra.shamlou/viz/BellaBeat_17514072335020/Dashboard1)
 
 ---
 
