@@ -15,8 +15,8 @@ You can **view RMD Report here**:
 
 ---
 
-Or directly open the raw **HTML file** here:  
-[Dashboard HTML](https://github.com/zahrashamlou/Bellabeat-Data-Exploration/blob/main/index.html)
+Or directly open the raw **HTML File** here:  
+[HTML File](https://github.com/zahrashamlou/Bellabeat-Data-Exploration/blob/main/index.html)
 
 ---
 
